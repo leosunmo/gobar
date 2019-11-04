@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"barista.run/bar"
+	"barista.run/colors"
 	"barista.run/modules/media"
 	"barista.run/outputs"
 	"barista.run/pango"
@@ -13,15 +14,15 @@ import (
 )
 
 func NewMediaPlayer(player string) bar.Module {
-	icon := pango.Icon("material-play-arrow")
-
-	return NewMediaPlayerWithIcon(player, icon)
+	playIcon := pango.Icon("material-play-arrow").Color(colors.Scheme("dim-icon"))
+	pauseIcon := pango.Icon("material-pause").Color(colors.Scheme("dim-icon"))
+	return NewMediaPlayerWithIcons(player, playIcon, pauseIcon)
 }
 
-func NewMediaPlayerWithIcon(player string, icon *pango.Node) bar.Module {
+func NewMediaPlayerWithIcons(player string, playIcon, pauseIcon *pango.Node) bar.Module {
 
 	var spacer = pango.Text(" ").XXSmall()
-
+	var icon *pango.Node
 	mediaFormatter := func(m media.Info) bar.Output {
 		if m.PlaybackStatus == media.Stopped || m.PlaybackStatus == media.Disconnected {
 			return nil
@@ -37,9 +38,9 @@ func NewMediaPlayerWithIcon(player string, icon *pango.Node) bar.Module {
 		// Custom behaviour for Spotify
 		if m.PlayerName == "spotify" {
 			if m.PlaybackStatus == media.Playing {
-				icon = pango.Icon("material-play-arrow")
+				icon = playIcon
 			} else {
-				icon = pango.Icon("material-pause")
+				icon = pauseIcon
 			}
 			return outputs.Pango(icon, spacer, artistSong).OnClick(
 				func(e bar.Event) {
