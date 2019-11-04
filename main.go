@@ -16,7 +16,6 @@ import (
 	"barista.run/modules/battery"
 	"barista.run/modules/clock"
 	"barista.run/modules/cputemp"
-	"barista.run/modules/media"
 	"barista.run/modules/meminfo"
 	"barista.run/modules/netspeed"
 	"barista.run/modules/sysinfo"
@@ -27,8 +26,8 @@ import (
 	"barista.run/pango/icons/material"
 	"barista.run/pango/icons/mdi"
 	"barista.run/pango/icons/typicons"
-	"golang.org/x/time/rate"
 
+	"github.com/leosunmo/gobar/internal/builtins"
 	colorful "github.com/lucasb-eyer/go-colorful"
 	"github.com/martinlindhe/unit"
 )
@@ -40,83 +39,6 @@ func truncate(in string, l int) string {
 		return in
 	}
 	return string([]rune(in)[:l-1]) + "⋯"
-}
-
-func hms(d time.Duration) (h int, m int, s int) {
-	h = int(d.Hours())
-	m = int(d.Minutes()) % 60
-	s = int(d.Seconds()) % 60
-	return
-}
-
-func formatMediaTime(d time.Duration) string {
-	h, m, s := hms(d)
-	if h > 0 {
-		return fmt.Sprintf("%d:%02d:%02d", h, m, s)
-	}
-	return fmt.Sprintf("%d:%02d", m, s)
-}
-
-func mediaFormatFunc(m media.Info) bar.Output {
-	if m.PlaybackStatus == media.Stopped || m.PlaybackStatus == media.Disconnected {
-		return nil
-	}
-	artist := truncate(m.Artist, 20)
-	title := truncate(m.Title, 40-len(artist))
-	if len(title) < 20 {
-		artist = truncate(m.Artist, 40-len(title))
-	}
-	icon := pango.Icon("material-play-arrow").Color(colors.Hex("#f70"))
-
-	artistSong := pango.Textf("%s - %s", artist, title).Small()
-
-	// Custom behaviour for Spotify
-	if m.PlayerName == "spotify" {
-		if m.PlaybackStatus == media.Playing {
-			icon = pango.Icon("material-play-arrow")
-		} else {
-			icon = pango.Icon("material-pause")
-		}
-		return outputs.Pango(icon, spacer, artistSong).OnClick(
-			func(e bar.Event) {
-				if m.PlayerName == "spotify" {
-					switch e.Button {
-					case bar.ButtonLeft:
-						m.PlayPause()
-					case bar.ButtonRight:
-						m.Next()
-					case bar.ButtonMiddle:
-						m.Previous()
-					}
-				} else {
-					switch e.Button {
-					case bar.ButtonLeft:
-						m.PlayPause()
-					case bar.ScrollDown, bar.ScrollRight:
-						if rate.NewLimiter(rate.Every(50*time.Millisecond), 1).Allow() {
-							m.Seek(time.Second)
-						}
-					case bar.ButtonBack:
-						m.Previous()
-					case bar.ScrollUp, bar.ScrollLeft:
-						if rate.NewLimiter(rate.Every(50*time.Millisecond), 1).Allow() {
-							m.Seek(-time.Second)
-						}
-					case bar.ButtonForward:
-						m.Next()
-					}
-				}
-			},
-		)
-	}
-	if m.PlaybackStatus == media.Playing {
-		icon.Append(
-			spacer, pango.Textf("%s/%s",
-				formatMediaTime(m.Position()),
-				formatMediaTime(m.Length)),
-		)
-	}
-	return outputs.Pango(icon, spacer, artistSong)
 }
 
 var startTaskManager = click.RunLeft("gnome-system-monitor")
@@ -348,10 +270,16 @@ func main() {
 			)
 		})
 
-	spotify := media.New("spotify").Output(mediaFormatFunc)
+	mediaPlayer := builtins.NewMediaPlayer("spotify")
 
-	grp, _ := collapsing.Group(net, temp, freeMem, loadAvg)
-
+	grp, c := collapsing.Group(net, temp, freeMem, loadAvg)
+	c.ButtonFunc(func(c collapsing.Controller) (start, end bar.Output) {
+		if c.Expanded() {
+			return outputs.Text(">").OnClick(click.Left(c.Collapse)),
+				outputs.Text("<").OnClick(click.Left(c.Collapse))
+		}
+		return outputs.Pango(pango.Icon("fa-cogs").Small()).OnClick(click.Left(c.Expand)), nil
+	})
 	vpn := vpn.DefaultInterface().Output(func(s vpn.State) bar.Output {
 		if s.Connected() {
 			return outputs.Pango(pango.Icon("fa-shield-alt")).Color(colors.Scheme("dim-icon"))
@@ -361,6 +289,8 @@ func main() {
 		}
 		return outputs.Text("...")
 	})
+
+	wlan, _ := builtins.NewWlan()
 
 	//pango.Icon("fa-shield-alt")
 
@@ -386,8 +316,9 @@ func main() {
 	// 	})
 
 	panic(barista.Run(
-		spotify,
+		mediaPlayer,
 		vpn,
+		wlan,
 		grp,
 		//ghNotify,
 		batt,
