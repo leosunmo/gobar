@@ -44,6 +44,7 @@ type GlobalConfig struct {
 	IconFont   string `ini:"icon_font"`
 	LabelFont  string `ini:"label_font"`
 	ValueFont  string `ini:"value_font"`
+	Spacer     string `ini:"spacer"`
 }
 
 // BlockConfig is the configuration for a single Blocklet
@@ -77,16 +78,11 @@ func ReadConfig(configFile string) error {
 	return nil
 }
 
-func findFont(fontName string) (string, error) {
-	fontPath, err := findfont.Find(fontName)
-	if err != nil {
-		return "", err
-	}
-	return fontPath, nil
-}
-
 func (bc *BarConfig) readSections(cfg *ini.File) error {
 	var err error
+	// Set defaults
+	bc.SetDefaults()
+
 	// Read the global section first
 	gs := cfg.Section(ini.DEFAULT_SECTION)
 	if len(gs.Keys()) > 0 {
@@ -127,6 +123,11 @@ func (bc *BarConfig) readSections(cfg *ini.File) error {
 	return nil
 }
 
+func (bc *BarConfig) SetDefaults() {
+	bc.Global.Spacer = " " // Figure out how to set Pango as a spacer, like <span size='xx-small'> </span>
+
+}
+
 func findExecutable(command string) string {
 	_, err := os.Stat(command)
 	if os.IsNotExist(err) {
@@ -150,4 +151,12 @@ func isExecutable(command string) bool {
 		}
 	}
 	return false
+}
+
+func findFont(fontName string) (string, error) {
+	fontPath, err := findfont.Find(fontName)
+	if err != nil {
+		return "", err
+	}
+	return fontPath, nil
 }
