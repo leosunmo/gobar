@@ -278,7 +278,11 @@ func main() {
 			return outputs.Text(">").OnClick(click.Left(c.Collapse)),
 				outputs.Text("<").OnClick(click.Left(c.Collapse))
 		}
-		return outputs.Pango(pango.Icon("fa-cogs").Small()).OnClick(click.Left(c.Expand)), nil
+		icon := pango.Icon("fa-cogs").Color(colors.Scheme("dim-icon")).Small()
+
+		text := pango.Textf("%s%%", "25")
+
+		return outputs.Pango(icon, spacer, text).OnClick(click.Left(c.Expand)), nil
 	})
 	vpn := vpn.DefaultInterface().Output(func(s vpn.State) bar.Output {
 		if s.Connected() {
