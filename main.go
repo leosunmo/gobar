@@ -17,9 +17,9 @@ import (
 	"barista.run/modules/clock"
 	"barista.run/modules/cputemp"
 	"barista.run/modules/meminfo"
+	"barista.run/modules/netinfo"
 	"barista.run/modules/netspeed"
 	"barista.run/modules/sysinfo"
-	"barista.run/modules/vpn"
 	"barista.run/outputs"
 	"barista.run/pango"
 	"barista.run/pango/icons/fontawesome"
@@ -28,6 +28,7 @@ import (
 	"barista.run/pango/icons/typicons"
 
 	"github.com/leosunmo/gobar/internal/builtins"
+	"github.com/leosunmo/gobar/internal/utils"
 	colorful "github.com/lucasb-eyer/go-colorful"
 	"github.com/martinlindhe/unit"
 )
@@ -284,18 +285,9 @@ func main() {
 
 		return outputs.Pango(icon, spacer, text).OnClick(click.Left(c.Expand)), nil
 	})
-	vpn := vpn.DefaultInterface().Output(func(s vpn.State) bar.Output {
-		if s.Connected() {
-			return outputs.Pango(pango.Icon("fa-shield-alt")).Color(colors.Scheme("dim-icon"))
-		}
-		if s.Disconnected() {
-			return nil
-		}
-		return outputs.Text("...")
-	})
 
 	wlan, _ := builtins.NewWlan()
-
+	vpn, _ := builtins.NewVPN("tun0")
 	//pango.Icon("fa-shield-alt")
 
 	// ghNotify := github.New("%%GITHUB_CLIENT_ID%%", "%%GITHUB_CLIENT_SECRET%%").
@@ -319,9 +311,29 @@ func main() {
 	// 			click.RunLeft("xdg-open", "https://github.com/notifications"))
 	// 	})
 
+	netm := netinfo.New().Output(func(s netinfo.State) bar.Output {
+		if !s.Enabled() {
+			return nil
+		}
+
+		n := &pango.Node{}
+		icon := pango.Icon("fa-shield-alt")
+		switch s.State {
+		case netlink.Up:
+			n = pango.Textf(" %s", utils.Truncate("VPN", 10))
+		case netlink.Dormant:
+			n = pango.Textf(" %s", utils.Truncate("...", 10))
+		default:
+			n = pango.Textf(" %s", utils.Truncate("OFF", 10))
+		}
+
+		return outputs.Pango(icon, n)
+	})
+
 	panic(barista.Run(
 		mediaPlayer,
 		vpn,
+		netm,
 		wlan,
 		grp,
 		//ghNotify,
