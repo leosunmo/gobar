@@ -19,7 +19,6 @@ import (
 	"barista.run/modules/meminfo"
 	"barista.run/modules/netspeed"
 	"barista.run/modules/sysinfo"
-	"barista.run/modules/vpn"
 	"barista.run/outputs"
 	"barista.run/pango"
 	"barista.run/pango/icons/fontawesome"
@@ -284,15 +283,17 @@ func main() {
 
 		return outputs.Pango(icon, spacer, text).OnClick(click.Left(c.Expand)), nil
 	})
-	vpn := vpn.DefaultInterface().Output(func(s vpn.State) bar.Output {
-		if s.Connected() {
-			return outputs.Pango(pango.Icon("fa-shield-alt")).Color(colors.Scheme("dim-icon"))
-		}
-		if s.Disconnected() {
-			return nil
-		}
-		return outputs.Text("...")
-	})
+	// vpn := vpn.DefaultInterface().Output(func(s vpn.State) bar.Output {
+	// 	if s.Connected() {
+	// 		return outputs.Pango(pango.Icon("fa-shield-alt")).Color(colors.Scheme("dim-icon"))
+	// 	}
+	// 	if s.Disconnected() {
+	// 		return nil
+	// 	}
+	// 	return outputs.Text("...")
+	// })
+
+	vpn, _ := builtins.NewVPN()
 
 	wlan, _ := builtins.NewWlan()
 
