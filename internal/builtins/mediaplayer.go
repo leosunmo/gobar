@@ -12,16 +12,16 @@ import (
 	"github.com/leosunmo/gobar/internal/utils"
 )
 
+var spacer = pango.Text(" ").XXSmall()
+
 func NewMediaPlayer(player string) bar.Module {
 	playIcon := pango.Icon("material-play-arrow").Color(colors.Scheme("dim-icon"))
 	pauseIcon := pango.Icon("material-pause").Color(colors.Scheme("dim-icon"))
-	stoppedIcon := pango.Icon("material-stop").Color(colors.Scheme("dim-icon"))
-	return NewMediaPlayerWithIcons(player, playIcon, pauseIcon, stoppedIcon)
+	return NewMediaPlayerWithIcons(player, playIcon, pauseIcon)
 }
 
-func NewMediaPlayerWithIcons(player string, playIcon, pauseIcon, stoppedIcon *pango.Node) bar.Module {
+func NewMediaPlayerWithIcons(player string, playIcon, pauseIcon *pango.Node) bar.Module {
 
-	var spacer = pango.Text(" ").XXSmall()
 	var icon *pango.Node
 	mediaFormatter := func(m media.Info) bar.Output {
 		if m.PlaybackStatus == media.Stopped || m.PlaybackStatus == media.Disconnected {
@@ -35,11 +35,7 @@ func NewMediaPlayerWithIcons(player string, playIcon, pauseIcon, stoppedIcon *pa
 
 		artistSong := pango.Textf("%s - %s", artist, title).Small()
 
-		if m.PlaybackStatus == media.Playing {
-			icon = playIcon
-		} else {
-			icon = pauseIcon
-		}
+		icon = makeMediaIcon(m, playIcon, pauseIcon)
 
 		return outputs.Pango(icon, spacer, artistSong).OnClick(
 			func(e bar.Event) {
@@ -56,10 +52,10 @@ func NewMediaPlayerWithIcons(player string, playIcon, pauseIcon, stoppedIcon *pa
 	}
 
 	if player != "" {
-		mod := media.New(player).Output(mediaFormatter)
+		mod := media.New(player).RepeatingOutput(mediaFormatter)
 		return mod
 	}
-	mod := media.Auto().Output(mediaFormatter)
+	mod := media.Auto().RepeatingOutput(mediaFormatter)
 	return mod
 
 }
@@ -70,4 +66,28 @@ func formatMediaTime(d time.Duration) string {
 		return fmt.Sprintf("%d:%02d:%02d", h, m, s)
 	}
 	return fmt.Sprintf("%d:%02d", m, s)
+}
+
+func makeMediaIcon(m media.Info, playIcon, pauseIcon *pango.Node) *pango.Node {
+	var icon *pango.Node
+
+	if m.PlaybackStatus == media.Playing {
+		icon = playIcon
+	} else {
+		icon = pauseIcon
+	}
+	if m.PlayerName != "spotify" {
+		// If it's not spotify, we can show track length.
+		if m.PlaybackStatus == media.Playing {
+			icon = pango.New(playIcon, spacer, pango.Textf("%s/%s",
+				formatMediaTime(m.Position()),
+				formatMediaTime(m.Length)),
+			)
+		} else {
+			icon = pango.New(pauseIcon,
+				spacer, pango.Text(formatMediaTime(m.Length)),
+			)
+		}
+	}
+	return icon.Color(colors.Scheme("dim-icon")).Small()
 }
