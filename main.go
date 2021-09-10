@@ -269,7 +269,7 @@ func main() {
 			)
 		})
 
-	mediaPlayer := builtins.NewMediaPlayer("spotify")
+	mediaPlayer := builtins.NewMediaPlayer("")
 
 	grp, c := collapsing.Group(net, temp, freeMem, loadAvg)
 	c.ButtonFunc(func(c collapsing.Controller) (start, end bar.Output) {
@@ -293,7 +293,7 @@ func main() {
 	// 	return outputs.Text("...")
 	// })
 
-	vpn, _ := builtins.NewVPN()
+	//vpn, _ := builtins.NewVPN()
 
 	wlan, _ := builtins.NewWlan()
 
@@ -322,7 +322,7 @@ func main() {
 
 	panic(barista.Run(
 		mediaPlayer,
-		vpn,
+		//vpn,
 		wlan,
 		grp,
 		//ghNotify,

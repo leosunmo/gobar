@@ -10,16 +10,16 @@ import (
 	"barista.run/outputs"
 	"barista.run/pango"
 	"github.com/leosunmo/gobar/internal/utils"
-	"golang.org/x/time/rate"
 )
 
 func NewMediaPlayer(player string) bar.Module {
 	playIcon := pango.Icon("material-play-arrow").Color(colors.Scheme("dim-icon"))
 	pauseIcon := pango.Icon("material-pause").Color(colors.Scheme("dim-icon"))
-	return NewMediaPlayerWithIcons(player, playIcon, pauseIcon)
+	stoppedIcon := pango.Icon("material-stop").Color(colors.Scheme("dim-icon"))
+	return NewMediaPlayerWithIcons(player, playIcon, pauseIcon, stoppedIcon)
 }
 
-func NewMediaPlayerWithIcons(player string, playIcon, pauseIcon *pango.Node) bar.Module {
+func NewMediaPlayerWithIcons(player string, playIcon, pauseIcon, stoppedIcon *pango.Node) bar.Module {
 
 	var spacer = pango.Text(" ").XXSmall()
 	var icon *pango.Node
@@ -35,53 +35,24 @@ func NewMediaPlayerWithIcons(player string, playIcon, pauseIcon *pango.Node) bar
 
 		artistSong := pango.Textf("%s - %s", artist, title).Small()
 
-		// Custom behaviour for Spotify
-		if m.PlayerName == "spotify" {
-			if m.PlaybackStatus == media.Playing {
-				icon = playIcon
-			} else {
-				icon = pauseIcon
-			}
-			return outputs.Pango(icon, spacer, artistSong).OnClick(
-				func(e bar.Event) {
-					if m.PlayerName == "spotify" {
-						switch e.Button {
-						case bar.ButtonLeft:
-							m.PlayPause()
-						case bar.ButtonRight:
-							m.Next()
-						case bar.ButtonMiddle:
-							m.Previous()
-						}
-					} else {
-						switch e.Button {
-						case bar.ButtonLeft:
-							m.PlayPause()
-						case bar.ScrollDown, bar.ScrollRight:
-							if rate.NewLimiter(rate.Every(50*time.Millisecond), 1).Allow() {
-								m.Seek(time.Second)
-							}
-						case bar.ButtonBack:
-							m.Previous()
-						case bar.ScrollUp, bar.ScrollLeft:
-							if rate.NewLimiter(rate.Every(50*time.Millisecond), 1).Allow() {
-								m.Seek(-time.Second)
-							}
-						case bar.ButtonForward:
-							m.Next()
-						}
-					}
-				},
-			)
-		}
 		if m.PlaybackStatus == media.Playing {
-			icon.Append(
-				spacer, pango.Textf("%s/%s",
-					formatMediaTime(m.Position()),
-					formatMediaTime(m.Length)),
-			)
+			icon = playIcon
+		} else {
+			icon = pauseIcon
 		}
-		return outputs.Pango(icon, spacer, artistSong)
+
+		return outputs.Pango(icon, spacer, artistSong).OnClick(
+			func(e bar.Event) {
+				switch e.Button {
+				case bar.ButtonLeft:
+					m.PlayPause()
+				case bar.ButtonRight:
+					m.Next()
+				case bar.ButtonMiddle:
+					m.Previous()
+				}
+			},
+		)
 	}
 
 	if player != "" {
