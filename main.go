@@ -27,11 +27,12 @@ import (
 	"barista.run/pango/icons/typicons"
 
 	"github.com/leosunmo/gobar/internal/builtins"
+	"github.com/leosunmo/gobar/internal/cpu"
 	colorful "github.com/lucasb-eyer/go-colorful"
 	"github.com/martinlindhe/unit"
 )
 
-var spacer = pango.Text(" ").XXSmall()
+var spacer = pango.Text("  ").XXSmall()
 
 func truncate(in string, l int) string {
 	if len([]rune(in)) <= l {
@@ -49,49 +50,6 @@ func home(path string) string {
 	}
 	return filepath.Join(usr.HomeDir, path)
 }
-
-// func calendarNotifyHandler(e calendar.Event) func(bar.Event) {
-// 	notifyBody := e.Start.Format("15:04")
-// 	if !e.End.Equal(e.Start) {
-// 		notifyBody += " - " + e.End.Format("15:04")
-// 	}
-// 	if e.Location != "" {
-// 		notifyBody += "\n" + e.Location
-// 	}
-// 	return click.RunLeft("notify-send", e.Summary, notifyBody)
-// }
-
-// func setupOauthEncryption() error {
-// 	const service = "barista-sample-bar"
-// 	var username string
-// 	if u, err := user.Current(); err == nil {
-// 		username = u.Username
-// 	} else {
-// 		username = fmt.Sprintf("user-%d", os.Getuid())
-// 	}
-// 	var secretBytes []byte
-// 	// IMPORTANT: The oauth tokens used by some modules are very sensitive, so
-// 	// we encrypt them with a random key and store that random key using
-// 	// libsecret (gnome-keyring or equivalent). If no secret provider is
-// 	// available, there is no way to store tokens (since the version of
-// 	// sample-bar used for setup-oauth will have a different key from the one
-// 	// running in i3bar). See also https://github.com/zalando/go-keyring#linux.
-// 	secret, err := keyring.Get(service, username)
-// 	if err == nil {
-// 		secretBytes, err = base64.RawURLEncoding.DecodeString(secret)
-// 	}
-// 	if err != nil {
-// 		secretBytes = make([]byte, 64)
-// 		_, err := rand.Read(secretBytes)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		secret = base64.RawURLEncoding.EncodeToString(secretBytes)
-// 		keyring.Set(service, username, secret)
-// 	}
-// 	oauth.SetEncryptionKey(secretBytes)
-// 	return nil
-// }
 
 func main() {
 	material.Load(home("/.config/regolith/styles/fonts/material-design-icons"))
@@ -182,26 +140,6 @@ func main() {
 	}
 	batt.Output(showBattPct)
 
-	// vol := volume.DefaultMixer().Output(func(v volume.Volume) bar.Output {
-	// 	if v.Mute {
-	// 		return outputs.
-	// 			Pango(pango.Icon("fa-volume-mute"), spacer, "MUT").
-	// 			Color(colors.Scheme("degraded"))
-	// 	}
-	// 	iconName := "off"
-	// 	pct := v.Pct()
-	// 	if pct > 66 {
-	// 		iconName = "up"
-	// 	} else if pct > 33 {
-	// 		iconName = "down"
-	// 	}
-	// 	return outputs.Pango(
-	// 		pango.Icon("fa-volume-"+iconName),
-	// 		spacer,
-	// 		pango.Textf("%2d%%", pct),
-	// 	)
-	// })
-
 	loadAvg := sysinfo.New().Output(func(s sysinfo.Info) bar.Output {
 		out := outputs.Textf("%0.2f %0.2f", s.Loads[0], s.Loads[2])
 		// Load averages are unusually high for a few minutes after boot.
@@ -269,63 +207,32 @@ func main() {
 			)
 		})
 
-	mediaPlayer := builtins.NewMediaPlayer("")
-
 	grp, c := collapsing.Group(net, temp, freeMem, loadAvg)
 	c.ButtonFunc(func(c collapsing.Controller) (start, end bar.Output) {
 		if c.Expanded() {
 			return outputs.Text(">").OnClick(click.Left(c.Collapse)),
 				outputs.Text("<").OnClick(click.Left(c.Collapse))
 		}
-		icon := pango.Icon("fa-cogs").Color(colors.Scheme("dim-icon")).Small()
-
-		text := pango.Textf("%s%%", "25")
-
-		return outputs.Pango(icon, spacer, text).OnClick(click.Left(c.Expand)), nil
+		return start, nil
 	})
-	// vpn := vpn.DefaultInterface().Output(func(s vpn.State) bar.Output {
-	// 	if s.Connected() {
-	// 		return outputs.Pango(pango.Icon("fa-shield-alt")).Color(colors.Scheme("dim-icon"))
-	// 	}
-	// 	if s.Disconnected() {
-	// 		return nil
-	// 	}
-	// 	return outputs.Text("...")
-	// })
 
-	//vpn, _ := builtins.NewVPN()
+	cp := cpu.New(1 * time.Second).Output(func(stat cpu.CPUStat) bar.Output {
+		icon := pango.Icon("fa-cogs").Color(colors.Scheme("dim-icon")).Small()
+		return outputs.Pango(icon, spacer, pango.Textf("%.1f%%", 100-stat.Idle)).OnClick(click.Left(c.Expand))
+	}).Every(2 * time.Second)
+
+	mediaPlayer := builtins.NewMediaPlayer("")
+
+	vpn, _ := builtins.NewVPN()
 
 	wlan, _ := builtins.NewWlan()
 
-	//pango.Icon("fa-shield-alt")
-
-	// ghNotify := github.New("%%GITHUB_CLIENT_ID%%", "%%GITHUB_CLIENT_SECRET%%").
-	// 	Output(func(n github.Notifications) bar.Output {
-	// 		if n.Total() == 0 {
-	// 			return nil
-	// 		}
-	// 		out := outputs.Group(
-	// 			pango.Icon("fab-github").
-	// 				Concat(spacer).
-	// 				ConcatTextf("%d", n.Total()))
-	// 		mentions := n["mention"] + n["team_mention"]
-	// 		if mentions > 0 {
-	// 			out.Append(spacer)
-	// 			out.Append(outputs.Pango(
-	// 				pango.Icon("mdi-bell").
-	// 					ConcatTextf("%d", mentions)).
-	// 				Urgent(true))
-	// 		}
-	// 		return out.Glue().OnClick(
-	// 			click.RunLeft("xdg-open", "https://github.com/notifications"))
-	// 	})
-
 	panic(barista.Run(
 		mediaPlayer,
-		//vpn,
+		vpn,
 		wlan,
+		cp,
 		grp,
-		//ghNotify,
 		batt,
 		localtime,
 	))
