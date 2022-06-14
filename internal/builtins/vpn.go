@@ -24,8 +24,7 @@ END{if (vpn_name) {printf("%s", vpn_name)}  else if(tun_name) {printf("%s", tun_
 
 // NewVPN returns a Shell module that displays the current VPN status
 func NewVPN() (bar.Module, error) {
-	icon := pango.Icon("material-security").Color(colors.Scheme("dim-icon"))
-
+	icon := pango.Icon("fa-lock").Color(colors.Scheme("dim-icon"))
 	return NewVPNWithIcon(icon)
 }
 
