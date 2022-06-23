@@ -218,7 +218,7 @@ func main() {
 
 	cp := cpu.New(1 * time.Second).Output(func(stat cpu.CPUStat) bar.Output {
 		icon := pango.Icon("fa-cogs").Color(colors.Scheme("dim-icon")).Small()
-		return outputs.Pango(icon, spacer, pango.Textf("%.1f%%", 100-stat.Idle)).OnClick(click.Left(c.Expand))
+		return outputs.Pango(icon, spacer, pango.Textf("%4.1f%%", 100-stat.Idle)).OnClick(click.Left(c.Expand))
 	}).Every(2 * time.Second)
 
 	mediaPlayer := builtins.NewMediaPlayer("")
