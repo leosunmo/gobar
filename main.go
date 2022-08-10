@@ -52,10 +52,10 @@ func home(path string) string {
 }
 
 func main() {
-	material.Load(home("/.config/regolith/styles/fonts/material-design-icons"))
-	mdi.Load(home("/.config/regolith/styles/fonts/MaterialDesign-Webfont"))
-	typicons.Load(home("/.config/regolith/styles/fonts/typicons.font"))
-	fontawesome.Load(home("/.config/regolith/styles/fonts/Font-Awesome"))
+	material.Load(home("/.config/regolith2/fonts/material-design-icons"))
+	mdi.Load(home("/.config/regolith2/fonts/MaterialDesign-Webfont"))
+	typicons.Load(home("/.config/regolith2/fonts/typicons.font"))
+	fontawesome.Load(home("/.config/regolith2/fonts/Font-Awesome"))
 
 	colors.LoadBarConfig()
 	bg := colors.Scheme("background")
@@ -217,7 +217,7 @@ func main() {
 	})
 
 	cp := cpu.New(1 * time.Second).Output(func(stat cpu.CPUStat) bar.Output {
-		icon := pango.Icon("fa-cogs").Color(colors.Scheme("dim-icon")).Small()
+		icon := pango.Icon("fa-gears").Color(colors.Scheme("dim-icon")).Small()
 		return outputs.Pango(icon, spacer, pango.Textf("%4.1f%%", 100-stat.Idle)).OnClick(click.Left(c.Expand))
 	}).Every(2 * time.Second)
 
