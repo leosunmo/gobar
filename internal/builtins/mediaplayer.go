@@ -4,27 +4,35 @@ import (
 	"fmt"
 	"time"
 
-	"barista.run/bar"
-	"barista.run/colors"
-	"barista.run/modules/media"
-	"barista.run/outputs"
-	"barista.run/pango"
+	"github.com/leosunmo/barista/bar"
+	"github.com/leosunmo/barista/colors"
+	"github.com/leosunmo/barista/logging"
+	"github.com/leosunmo/barista/modules/media"
+	"github.com/leosunmo/barista/outputs"
+	"github.com/leosunmo/barista/pango"
 	"github.com/leosunmo/gobar/internal/utils"
+	"golang.org/x/time/rate"
 )
 
 var spacer = pango.Text(" ").XXSmall()
 
+var excludedPlayers = []string{"chromium.*", "playerctld", "firefox", "opera", "vivaldi"}
+
+// var excludedPlayers []string
+
 func NewMediaPlayer(player string) bar.Module {
-	playIcon := pango.Icon("material-play-arrow").Color(colors.Scheme("dim-icon"))
-	pauseIcon := pango.Icon("material-pause").Color(colors.Scheme("dim-icon"))
+	playIcon := pango.Icon("symbol-play-arrow").Color(colors.Scheme("dim-icon"))
+	pauseIcon := pango.Icon("symbol-pause").Color(colors.Scheme("dim-icon"))
 	return NewMediaPlayerWithIcons(player, playIcon, pauseIcon)
 }
 
-func NewMediaPlayerWithIcons(player string, playIcon, pauseIcon *pango.Node) bar.Module {
+var seekLimiter = rate.NewLimiter(rate.Every(50*time.Millisecond), 1)
 
+func NewMediaPlayerWithIcons(player string, playIcon, pauseIcon *pango.Node) bar.Module {
 	var icon *pango.Node
 	mediaFormatter := func(m media.Info) bar.Output {
-		if m.PlaybackStatus == media.Stopped || m.PlaybackStatus == media.Disconnected {
+		if m.PlaybackStatus == media.Disconnected {
+			logging.Log("Media player disconnected")
 			return nil
 		}
 		artist := utils.Truncate(m.Artist, 20)
@@ -46,6 +54,14 @@ func NewMediaPlayerWithIcons(player string, playIcon, pauseIcon *pango.Node) bar
 					m.Next()
 				case bar.ButtonMiddle:
 					m.Previous()
+				case bar.ScrollUp, bar.ScrollRight:
+					if seekLimiter.Allow() {
+						m.Seek(time.Second)
+					}
+				case bar.ScrollDown, bar.ScrollLeft:
+					if seekLimiter.Allow() {
+						m.Seek(-time.Second)
+					}
 				}
 			},
 		)
@@ -55,9 +71,8 @@ func NewMediaPlayerWithIcons(player string, playIcon, pauseIcon *pango.Node) bar
 		mod := media.New(player).RepeatingOutput(mediaFormatter)
 		return mod
 	}
-	mod := media.Auto().RepeatingOutput(mediaFormatter)
+	mod := media.Auto(excludedPlayers...).RepeatingOutput(mediaFormatter)
 	return mod
-
 }
 
 func formatMediaTime(d time.Duration) string {
@@ -76,18 +91,13 @@ func makeMediaIcon(m media.Info, playIcon, pauseIcon *pango.Node) *pango.Node {
 	} else {
 		icon = pauseIcon
 	}
-	if m.PlayerName != "spotify" {
-		// If it's not spotify, we can show track length.
-		if m.PlaybackStatus == media.Playing {
-			icon = pango.New(playIcon, spacer, pango.Textf("%s/%s",
-				formatMediaTime(m.Position()),
-				formatMediaTime(m.Length)),
-			)
-		} else {
-			icon = pango.New(pauseIcon,
-				spacer, pango.Text(formatMediaTime(m.Length)),
-			)
-		}
+	if m.PlaybackStatus == media.Playing {
+		icon = pango.New(playIcon)
+	} else {
+		icon = pango.New(pauseIcon)
 	}
+	icon.Append(spacer, pango.Textf("%s/%s",
+		formatMediaTime(m.Position()),
+		formatMediaTime(m.Length)).Small())
 	return icon.Color(colors.Scheme("dim-icon")).Small()
 }

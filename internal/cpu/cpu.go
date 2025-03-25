@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"barista.run/bar"
-	"barista.run/base/notifier"
-	"barista.run/base/value"
-	"barista.run/outputs"
-	"barista.run/timing"
+	"github.com/leosunmo/barista/bar"
+	"github.com/leosunmo/barista/base/notifier"
+	"github.com/leosunmo/barista/base/value"
+	"github.com/leosunmo/barista/outputs"
+	"github.com/leosunmo/barista/timing"
 	"github.com/mackerelio/go-osstat/cpu"
 )
 

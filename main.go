@@ -1,30 +1,30 @@
 package main
 
 import (
-	"fmt"
+	"os"
 	"os/user"
 	"path/filepath"
 	"time"
 
-	"barista.run"
-	"barista.run/bar"
-	"barista.run/base/click"
-	"barista.run/base/watchers/netlink"
-	"barista.run/colors"
-	"barista.run/format"
-	"barista.run/group/collapsing"
-	"barista.run/modules/battery"
-	"barista.run/modules/clock"
-	"barista.run/modules/cputemp"
-	"barista.run/modules/meminfo"
-	"barista.run/modules/netspeed"
-	"barista.run/modules/sysinfo"
-	"barista.run/outputs"
-	"barista.run/pango"
-	"barista.run/pango/icons/fontawesome"
-	"barista.run/pango/icons/material"
-	"barista.run/pango/icons/mdi"
-	"barista.run/pango/icons/typicons"
+	"github.com/leosunmo/barista"
+	"github.com/leosunmo/barista/bar"
+	"github.com/leosunmo/barista/base/click"
+	"github.com/leosunmo/barista/base/watchers/netlink"
+	"github.com/leosunmo/barista/colors"
+	"github.com/leosunmo/barista/format"
+	"github.com/leosunmo/barista/group/collapsing"
+	"github.com/leosunmo/barista/logging"
+	"github.com/leosunmo/barista/modules/battery"
+	"github.com/leosunmo/barista/modules/clock"
+	"github.com/leosunmo/barista/modules/cputemp"
+	"github.com/leosunmo/barista/modules/meminfo"
+	"github.com/leosunmo/barista/modules/netspeed"
+	"github.com/leosunmo/barista/modules/sysinfo"
+	"github.com/leosunmo/barista/modules/volume"
+	"github.com/leosunmo/barista/modules/volume/pulseaudio"
+	"github.com/leosunmo/barista/outputs"
+	"github.com/leosunmo/barista/pango"
+	"github.com/leosunmo/barista/pango/icons/symbols"
 
 	"github.com/leosunmo/gobar/internal/builtins"
 	"github.com/leosunmo/gobar/internal/cpu"
@@ -33,13 +33,6 @@ import (
 )
 
 var spacer = pango.Text("  ").XXSmall()
-
-func truncate(in string, l int) string {
-	if len([]rune(in)) <= l {
-		return in
-	}
-	return string([]rune(in)[:l-1]) + "⋯"
-}
 
 var startTaskManager = click.RunLeft("gnome-system-monitor")
 
@@ -52,10 +45,9 @@ func home(path string) string {
 }
 
 func main() {
-	material.Load(home("/.config/regolith2/fonts/material-design-icons"))
-	mdi.Load(home("/.config/regolith2/fonts/MaterialDesign-Webfont"))
-	typicons.Load(home("/.config/regolith2/fonts/typicons.font"))
-	fontawesome.Load(home("/.config/regolith2/fonts/Font-Awesome"))
+	_ = symbols.LoadFile(home("/.config/gobar/fonts/material-design-icons/variablefont/MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].codepoints"))
+
+	logging.SetOutput(os.Stderr)
 
 	colors.LoadBarConfig()
 	bg := colors.Scheme("background")
@@ -67,6 +59,7 @@ func main() {
 		if v < 0.3 {
 			v = 0.3
 		}
+
 		colors.Set("bad", colorful.Hcl(40, 1.0, v).Clamped())
 		colors.Set("degraded", colorful.Hcl(90, 1.0, v).Clamped())
 		colors.Set("good", colorful.Hcl(120, 1.0, v).Clamped())
@@ -79,38 +72,99 @@ func main() {
 	localtime := clock.Local().
 		Output(time.Second, func(now time.Time) bar.Output {
 			return outputs.Pango(
-				pango.Icon("material-today").Color(colors.Scheme("dim-icon")),
+				pango.Icon("symbol-event").Color(colors.Scheme("dim-icon")),
 				spacer,
 				now.Format("Mon Jan 2 "),
-				pango.Icon("material-access-time").Color(colors.Scheme("dim-icon")),
+				pango.Icon("symbol-schedule").Color(colors.Scheme("dim-icon")),
 				spacer,
 				now.Format("15:04:05"),
 				spacer,
 			).OnClick(click.RunLeft("gsimplecal"))
 		})
 
+	vol := volume.New(pulseaudio.DefaultSink()).Output(func(v volume.Volume) bar.Output {
+		iconName := "volume"
+		switch {
+		case v.Mute:
+			iconName += "-off"
+		case v.Pct() == 0:
+			iconName += "-off"
+		case v.Pct() <= 40:
+			iconName += "-down"
+		case v.Pct() > 40:
+			iconName += "-up"
+		}
+		logging.Log("volume icon: %s", iconName)
+		return outputs.Pango(
+			pango.Icon("symbol-"+iconName).Color(colors.Scheme("dim-icon")),
+			spacer,
+			pango.Textf("%d%%", v.Pct()),
+		).OnClick(
+			func(e bar.Event) {
+				switch e.Button {
+				case bar.ButtonLeft:
+					v.SetMuted(!v.Mute)
+				case bar.ScrollDown:
+					v.SetVolume(v.Vol - int64(float64(v.Max-v.Min)*float64(5)/100))
+				case bar.ScrollUp:
+					v.SetVolume(v.Vol + v.Min + int64(float64(v.Max-v.Min)*float64(5)/100))
+				}
+			},
+		)
+	})
+
 	buildBattOutput := func(i battery.Info, disp *pango.Node) *bar.Segment {
 		if i.Status == battery.Disconnected || i.Status == battery.Unknown {
 			return nil
 		}
 		iconName := "battery"
+		remainingPct := i.RemainingPct()
 		if i.Status == battery.Charging {
-			iconName += "-charging"
+			switch {
+			case remainingPct > 80:
+				iconName += "-charging-90"
+			case remainingPct > 60:
+				iconName += "-charging-80"
+			case remainingPct > 50:
+				iconName += "-charging-60"
+			case remainingPct > 30:
+				iconName += "-charging-50"
+			case remainingPct > 20:
+				iconName += "-charging-30"
+			case remainingPct > 10:
+				iconName += "-charging-20"
+			default:
+				iconName += "-charging-20"
+			}
+		} else {
+			switch {
+			case remainingPct > 95:
+				iconName += "-full"
+			case remainingPct > 80:
+				iconName += "-6-bar"
+			case remainingPct > 50:
+				iconName += "-5-bar"
+			case remainingPct > 40:
+				iconName += "-4-bar"
+			case remainingPct > 30:
+				iconName += "-3-bar"
+			case remainingPct > 20:
+				iconName += "-2-bar"
+			case remainingPct > 10:
+				iconName += "-1-bar"
+			case remainingPct > 5:
+				iconName += "-0-bar"
+			default:
+				iconName += "-alert"
+			}
 		}
-		tenth := i.RemainingPct() / 10
+		out := outputs.Pango(pango.Icon("symbol-"+iconName).Color(colors.Scheme("dim-icon")), disp)
 		switch {
-		case tenth == 0:
-			iconName += "-outline"
-		case tenth < 10:
-			iconName += fmt.Sprintf("-%d0", tenth)
-		}
-		out := outputs.Pango(pango.Icon("mdi-"+iconName).Color(colors.Scheme("dim-icon")), disp)
-		switch {
-		case i.RemainingPct() <= 5:
+		case remainingPct <= 5:
 			out.Urgent(true)
-		case i.RemainingPct() <= 15:
+		case remainingPct <= 15:
 			out.Color(colors.Scheme("bad"))
-		case i.RemainingPct() <= 25:
+		case remainingPct <= 25:
 			out.Color(colors.Scheme("degraded"))
 		}
 		return out
@@ -127,6 +181,7 @@ func main() {
 			batt.Output(showBattTime)
 		}))
 	}
+
 	showBattTime = func(i battery.Info) bar.Output {
 		rem := i.RemainingTime()
 		out := buildBattOutput(i, pango.Textf(
@@ -160,7 +215,7 @@ func main() {
 	})
 
 	freeMem := meminfo.New().Output(func(m meminfo.Info) bar.Output {
-		out := outputs.Pango(pango.Icon("material-memory"), format.IBytesize(m.Available()))
+		out := outputs.Pango(pango.Icon("symbol-memory"), format.IBytesize(m.Available()))
 		freeGigs := m.Available().Gigabytes()
 		switch {
 		case freeGigs < 0.5:
@@ -180,7 +235,7 @@ func main() {
 		RefreshInterval(2 * time.Second).
 		Output(func(temp unit.Temperature) bar.Output {
 			out := outputs.Pango(
-				pango.Icon("mdi-fan"), spacer,
+				pango.Icon("symbol-mode-fan"), spacer,
 				pango.Textf("%2d℃", int(temp.Celsius())),
 			)
 			switch {
@@ -201,9 +256,9 @@ func main() {
 		RefreshInterval(2 * time.Second).
 		Output(func(s netspeed.Speeds) bar.Output {
 			return outputs.Pango(
-				pango.Icon("fa-upload"), spacer, pango.Textf("%7s", format.Byterate(s.Tx)),
+				pango.Icon("symbol-keyboard-arrow-down"), spacer, pango.Textf("%7s", format.Byterate(s.Tx)),
 				pango.Text(" ").Small(),
-				pango.Icon("fa-download"), spacer, pango.Textf("%7s", format.Byterate(s.Rx)),
+				pango.Icon("symbol-keyboard-arrow-up"), spacer, pango.Textf("%7s", format.Byterate(s.Rx)),
 			)
 		})
 
@@ -217,7 +272,7 @@ func main() {
 	})
 
 	cp := cpu.New(1 * time.Second).Output(func(stat cpu.CPUStat) bar.Output {
-		icon := pango.Icon("fa-gears").Color(colors.Scheme("dim-icon")).Small()
+		icon := pango.Icon("symbol-settings").Color(colors.Scheme("dim-icon")).Small()
 		return outputs.Pango(icon, spacer, pango.Textf("%4.1f%%", 100-stat.Idle)).OnClick(click.Left(c.Expand))
 	}).Every(2 * time.Second)
 
@@ -234,6 +289,7 @@ func main() {
 		cp,
 		grp,
 		batt,
+		vol,
 		localtime,
 	))
 }

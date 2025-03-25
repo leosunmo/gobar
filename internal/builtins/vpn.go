@@ -3,11 +3,11 @@ package builtins
 import (
 	"time"
 
-	"barista.run/bar"
-	"barista.run/colors"
-	"barista.run/modules/shell"
-	"barista.run/outputs"
-	"barista.run/pango"
+	"github.com/leosunmo/barista/bar"
+	"github.com/leosunmo/barista/colors"
+	"github.com/leosunmo/barista/modules/shell"
+	"github.com/leosunmo/barista/outputs"
+	"github.com/leosunmo/barista/pango"
 	"github.com/leosunmo/gobar/internal/utils"
 )
 
@@ -24,7 +24,7 @@ END{if (vpn_name) {printf("%s", vpn_name)}  else if(tun_name) {printf("%s", tun_
 
 // NewVPN returns a Shell module that displays the current VPN status
 func NewVPN() (bar.Module, error) {
-	icon := pango.Icon("fa-lock").Color(colors.Scheme("dim-icon"))
+	icon := pango.Icon("symbol-vpn-key").Color(colors.Scheme("dim-icon"))
 	return NewVPNWithIcon(icon)
 }
 
