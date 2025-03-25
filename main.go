@@ -45,9 +45,11 @@ func home(path string) string {
 }
 
 func main() {
-	_ = symbols.LoadFile(home("/.config/gobar/fonts/material-design-icons/variablefont/MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].codepoints"))
-
 	logging.SetOutput(os.Stderr)
+	err := symbols.LoadFile(home("/.config/gobar/fonts/MaterialSymbolsOutlined.codepoints"))
+	if err != nil {
+		logging.Log("failed to load font: %s", err.Error())
+	}
 
 	colors.LoadBarConfig()
 	bg := colors.Scheme("background")
