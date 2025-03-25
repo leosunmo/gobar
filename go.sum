@@ -19,6 +19,8 @@ github.com/jtolds/gls v4.20.0+incompatible h1:xdiiI2gbIgH/gLH7ADydsJ1uDOEzR8yvV7
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
 github.com/leosunmo/barista v0.0.0-20250318163103-2da66b26ab19 h1:opA3yilhBALTtTkwUGX2OHGTi+XrRWmL385DYxyJOjE=
 github.com/leosunmo/barista v0.0.0-20250318163103-2da66b26ab19/go.mod h1:eeVdz5DXfwFYNvZDzz5ZGXUlYYJqqW6HCqM7mbljsRI=
+github.com/leosunmo/barista v0.0.0-20250319200534-0515b867e474 h1:DjfGX08pdHWGTD8CjKNI7UjJenRiwLp+NqOKkUN5djc=
+github.com/leosunmo/barista v0.0.0-20250319200534-0515b867e474/go.mod h1:Timoo+3UxDZHQRX79dVG51RIGTLdTRQNWftdMS472RI=
 github.com/lucasb-eyer/go-colorful v1.2.0 h1:1nnpGOrhyZZuNyfu1QjKiUICQ74+3FNCN69Aj6K7nkY=
 github.com/lucasb-eyer/go-colorful v1.2.0/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
 github.com/mackerelio/go-osstat v0.2.2 h1:7jVyXGXTkQL3+6lDVUDBY+Fpo8VQPfyOkZeXxxsXX4c=

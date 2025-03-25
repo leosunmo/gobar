@@ -6,7 +6,7 @@ toolchain go1.24.1
 
 require (
 	github.com/flopp/go-findfont v0.0.0-20201114153133-e7393a00c15b
-	github.com/leosunmo/barista v0.0.0-20250318163103-2da66b26ab19
+	github.com/leosunmo/barista v0.0.0-20250319200534-0515b867e474
 	github.com/lucasb-eyer/go-colorful v1.2.0
 	github.com/mackerelio/go-osstat v0.2.2
 	github.com/martinlindhe/unit v0.0.0-20220817221856-f7b595b5f97e
